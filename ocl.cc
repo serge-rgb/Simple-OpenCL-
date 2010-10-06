@@ -2,22 +2,46 @@
 #include <CL/opencl.h>
 using namespace std;
 
-//For platform pf, print out msg and then print the result of quering id. (p 32. spec)
-void _print_profile_info (cl_platform_id pf, string msg,cl_platform_info id){
-  size_t str_size;
-  clGetPlatformInfo (pf,
-		     id, 0, NULL, &str_size);
-    void *str = malloc (str_size);
-    clGetPlatformInfo (pf,
-		       id,
-		       str_size,
-		       str,
-		       NULL);
-    cout << msg << ": " << (char*) str << endl; //Full or embedded
-    free (str);
+
+
+class OCL
+{
+private:
+  cl_platform_id platform;
+  void _print_profile_info (cl_platform_id pf, string msg,cl_platform_info id);
+public:
+  OCL();
+  virtual ~OCL();
+};
+
+OCL::~OCL (){
+  
 }
 
-void init_ocl (){
+//For platform pf, print out msg and then print the result of quering id. (p 32. spec)
+void OCL::_print_profile_info (cl_platform_id pf, string msg,cl_platform_info id){
+  size_t str_size;
+  cl_uint ret = clGetPlatformInfo (pf,
+				   id, 0, NULL, &str_size);
+  if (ret!=CL_SUCCESS){
+    cout << "Error getting platform info.\n";
+    exit (-1);
+  }
+  void *str = malloc (str_size);
+  ret = clGetPlatformInfo (pf,
+			   id,
+			   str_size,
+			   str,
+			   NULL);
+  if (ret!=CL_SUCCESS){
+    cout << "Error getting platform info.\n";
+    exit (-1);
+  }
+  cout << msg << ": " << (char*) str << endl; //Full or embedded
+  free (str);
+}
+
+OCL::OCL (){
   cl_uint num_entries = 10;
   cl_platform_id platforms [10];
   cl_uint num_platforms = -1;
@@ -43,13 +67,13 @@ void init_ocl (){
     _print_profile_info (pf,"Platform name",CL_PLATFORM_NAME);
     _print_profile_info (pf,"Platform vendor",CL_PLATFORM_VENDOR);
     _print_profile_info (pf,"Platform extensions",CL_PLATFORM_EXTENSIONS);
-    
-        
+            
   }
 }
+
 int main(int argc, char *argv[])
 {
-  init_ocl ();
+  OCL ocl;
   cout << "meh" << endl;
   return 0;
 }
