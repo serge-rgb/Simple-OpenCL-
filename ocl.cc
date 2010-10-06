@@ -152,7 +152,6 @@ void OCL::_print_profile_info (cl_platform_id pf, string msg,cl_platform_info id
   }
   cout << msg << ": " << (char*) str << endl; //Full or embedded
   free (str);
-  
 }
 
 OCL::~OCL (){
