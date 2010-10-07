@@ -1,5 +1,7 @@
 #include <iostream>
 #include <fstream>
+#include <cstdio>
+#include<cstring>
 #include <sstream>
 #include <CL/opencl.h>
 
@@ -133,7 +135,32 @@ OCL::OCL (){
     }
     exit (-1);
   }
+  // Create memory.-----------
 
+  const int arrsize = 1024;
+  float arrA [arrsize];
+  float arrB [arrsize];
+  float result [arrsize];
+  clCreateBuffer (this->context,
+		  CL_MEM_READ_ONLY,
+		  arrsize*(sizeof (float)),
+		  arrA,
+		  NULL);
+  
+  clCreateBuffer (this->context,
+		  CL_MEM_READ_ONLY,
+		  arrsize*(sizeof (float)),
+		  arrB,
+		  NULL);
+
+  clCreateBuffer (this->context,
+		  CL_MEM_WRITE_ONLY,
+		  arrsize*(sizeof (float)),
+		  result,
+		  NULL);
+
+  
+  
   //   COMMAND QUEUE
   cl_command_queue q = clCreateCommandQueue (this->context,
 					     this->devices [0], //This is just a test.. use gpu
@@ -144,18 +171,60 @@ OCL::OCL (){
     exit (-1);
   }
 
-  //do something
-  
+    
   //read source
   cl_program prgrm = createProgram("ocl.cl");
+  err = clBuildProgram (prgrm,this->num_devices,this->devices,"",NULL,NULL);
+  
+  if (err!=CL_SUCCESS){
+    cout << "Error building program. [";
+    string emsg;
+    if (err==CL_INVALID_PROGRAM)
+      emsg = "invalid program";
+    if (err==CL_INVALID_VALUE || err==CL_INVALID_DEVICE)
+      emsg = "invalid value or device";
+    if (err == CL_INVALID_BUILD_OPTIONS)
+      emsg = "invalid build options";
+    if (err==CL_INVALID_OPERATION)
+      emsg = "invalid operation";
+    if (err == CL_BUILD_PROGRAM_FAILURE){
+      size_t size;
+      clGetProgramBuildInfo(prgrm, this->devices[0], CL_PROGRAM_BUILD_LOG, 0, NULL, &size);
+      char log [size];
+      clGetProgramBuildInfo(prgrm, this->devices[0], CL_PROGRAM_BUILD_LOG, size, log, NULL);
+      cout << "build failure]\n";
+      cout << log << endl;
+      exit (-1);
+      
+    }
+	
+    cout << emsg << "]\n";
+    exit (-1);
+  }
+  
+  //create kernel
+  clCreateKernel(prgrm,"sum",&err);
 
+  if (err!=CL_SUCCESS){
+    cout << "Error creating kernel. [";
+    string emsg;
+    if (err==CL_INVALID_PROGRAM)
+      emsg = "Invalid program";
+    if (err==CL_INVALID_PROGRAM_EXECUTABLE)
+      emsg = "Invalid program executable (not built)";
+    if (err==CL_INVALID_KERNEL_NAME)
+      emsg = "Invalid kernel name";
+    if (err==CL_INVALID_KERNEL_DEFINITION)
+      emsg = "Incorrect kernel arguments";
+    if (err == CL_INVALID_VALUE)
+      emsg = "Kernel name is null";
+
+    cout << emsg << "]"<< endl;
+    exit (-1);
+  }
   
   clReleaseProgram (prgrm);
 
-  if (err!=CL_SUCCESS){
-    cout << " ...\n";
-  }
-  
   
   clReleaseCommandQueue (q);
   //   END COMMAND QUEUE
@@ -166,26 +235,23 @@ cl_program OCL::createProgram (string fname){
   ifstream file ("ocl.cl");
   stringstream ss;
   
-  int num_lines = 1;
-  while (file.good ()){
+  int num_lines = 0;
+  while (!file.eof ()){
     char c;
-    if (c=='\n') num_lines++;
     c = file.get();
+    if (c=='\n') num_lines++;
     ss.put (c);
   }
+  file.close ();
   
   char *src [num_lines];
   size_t lengths [num_lines];
-  int i=0;
-  
-  while (!ss.eof ()){
+
+  for (int i=0;i<num_lines && !ss.eof();++i){
     char *str=(char*)malloc (128*sizeof (char));
     ss.getline(str,128);  
-    string s = str;
-    lengths [i]=s.length ();
-    
+    lengths [i]=strlen(str); //s.length ();    
     src[i]=str;
-    i++;
   }
   
   cl_program prgrm = clCreateProgramWithSource (this->context,
@@ -193,6 +259,17 @@ cl_program OCL::createProgram (string fname){
 						(const char**) src,
 						lengths,
 						&err);
+
+  if (err!=CL_SUCCESS){
+    cout << "Error creating program \n";
+    exit (-1);
+  }
+  
+  //free str mem.
+  for (int i=0;i<num_lines;++i){
+    if (src [i]) free (src [i]);
+  }
+  
   return prgrm;
 }
 
