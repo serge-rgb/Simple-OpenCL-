@@ -15,7 +15,11 @@ void ocl_callback (const char* errinfo,
 }
 
 //quick error check
-#define CL_CHK(err) if (CL_SUCCESS!=err) cout << "opencl error at " << __FILE__ << ": " <<__LINE__ << endl; 
+#define CL_CHK(err) if (CL_SUCCESS!=err){\
+  cout << "opencl error at " << __FILE__ << ": " <<__LINE__ << endl;\
+  exit (-1);							    \
+  }
+
 
 class OCL
 {
@@ -109,11 +113,10 @@ OCL::OCL (){
     char *str = (char*)malloc (strsize);
     clGetDeviceInfo (device,
 		     CL_DEVICE_NAME,strsize,str,0);
-    cout << "\nDevice " << i << ": " << str << endl;
+    cout << "Device " << i << ": " << str << endl;
     free (str);
   }
 
-  //TODO: Make it use multiple CPUs as well..
 
   //===========Create context
   const cl_context_properties plist [] = {
@@ -138,29 +141,43 @@ OCL::OCL (){
     }
     exit (-1);
   }
+
+
+  // ----------------DEMO
+
+  
   // Create memory.-----------
 
   const int arrsize = 1024;
   float arrA [arrsize];
+  for (int i=0;i<arrsize;i++){
+    arrA [i] = 1.0;
+  }
   float arrB [arrsize];
+  for (int i=0;i<arrsize;i++){
+    arrB [i] = 2.0;
+  }
+  
   float result [arrsize];
+  
   cl_mem bA = clCreateBuffer (this->context,
 			      CL_MEM_READ_ONLY,
-			      arrsize*(sizeof (float)),
+			      sizeof (arrA),
 			      arrA,
 			      NULL);
   
   cl_mem bB = clCreateBuffer (this->context,
 			      CL_MEM_READ_ONLY,
-			      arrsize*(sizeof (float)),
+			      sizeof (arrB),
 			      arrB,
 			      NULL);
 
   cl_mem bRes =   clCreateBuffer (this->context,
 				  CL_MEM_WRITE_ONLY,
-				  arrsize*(sizeof (float)),
+				  sizeof (result),
 				  result,
 				  NULL);
+
 
   
   
@@ -170,7 +187,20 @@ OCL::OCL (){
 					     0,
 					     &err);
 
-  CL_CHK (err)
+  CL_CHK (err);
+
+  //write to the buffers.
+
+  err = clEnqueueWriteBuffer (q, bA, CL_TRUE, 0,
+			      sizeof (arrA),
+			      arrA,
+			      0,NULL,NULL);
+  CL_CHK (err);
+  err = clEnqueueWriteBuffer (q, bA, CL_TRUE, 0,
+			      sizeof (arrB),
+			      arrB,
+			      0,NULL,NULL);
+  CL_CHK (err);
         
   //read source
   cl_program prgrm = createProgram("ocl.cl");
@@ -185,7 +215,41 @@ OCL::OCL (){
   setKernelArg (kernel,0,sizeof (cl_mem),(void*)&bA);
   setKernelArg (kernel,1,sizeof (cl_mem),(void*)&bB);
   setKernelArg (kernel,2,sizeof (cl_mem),(void*)&bRes);
+
+  // execute
+  size_t global_wsize = arrsize;
+  size_t local_wsize = 32*4;
   
+  err=clEnqueueNDRangeKernel (q,
+			  kernel,
+			  1,//work_dim
+			  NULL,//offset
+			  &global_wsize,
+			  &local_wsize,
+			  0,NULL,NULL); //events that need waiting
+  CL_CHK (err);
+
+  //read result
+
+  err = clEnqueueReadBuffer (q,
+		       bRes,
+		       CL_TRUE,
+		       0,
+		       sizeof (result),
+		       result,
+		       0,NULL,NULL);
+  CL_CHK (err);
+  
+  int ok = 0;
+  int fu = 0;
+  for (int i=0;i<arrsize;i++){
+    cout << result [i]<<endl;
+    if (result [i]==3.0){
+      ok++;
+    }
+    else fu++;
+  }
+  cout << ok << " " << fu << endl;
   clReleaseProgram (prgrm);
   clReleaseCommandQueue (q);
   //   END COMMAND QUEUE
