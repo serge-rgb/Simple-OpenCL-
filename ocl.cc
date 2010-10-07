@@ -229,10 +229,47 @@ OCL::OCL (){
 
   //set kernel args.
 
-  clSetKernelArg (kernel,
-		  0,
-		  arrsize*sizeof (float),
-		  &bA);
+  err = clSetKernelArg (kernel,
+			0,
+			sizeof (bA),
+			&bA);
+  err |= clSetKernelArg (kernel,
+			 1,
+			 sizeof (bB),
+			 &bB);
+  err |= clSetKernelArg (kernel,
+			 2,
+			 sizeof (bRes),
+			 &bRes);
+
+  if (err!=CL_SUCCESS){
+    cout << "Error setting kernel arguments\n";
+    if (err == CL_INVALID_KERNEL){
+      cout << ".. Invalid kernel\n";
+    }
+    if (err==CL_INVALID_ARG_INDEX){
+      cout << ".. Invalid index.\n";
+    }
+    if (err==CL_INVALID_ARG_VALUE){
+      cout << ".. Invalid arg value (arg value is NULL)\n";
+    }
+    if (err==CL_INVALID_MEM_OBJECT){
+      cout << ".. Invalid memory object\n";
+    }
+    if (err==CL_INVALID_SAMPLER){
+      cout << ".. Invalid sampler\n";
+    }
+    if (err==CL_INVALID_ARG_SIZE){
+      cout << ".. Invalid arg size (if arg_size does not match the size of the data type for an\n\
+argument that is not a memory object or if the argument is a memory object and arg_size\n\
+!= sizeof(cl_mem) or if arg_size is zero and the argument is declared with the\n\
+__local qualifier or if the argument is a sampler and arg_size !=\n\
+sizeof(cl_sampler)\
+)\n";
+    }
+    
+    exit (-1);
+  }
   
   clReleaseProgram (prgrm);
   clReleaseCommandQueue (q);
