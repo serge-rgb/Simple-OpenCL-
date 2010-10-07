@@ -14,6 +14,9 @@ void ocl_callback (const char* errinfo,
   cout << "something blew up"<< endl;
 }
 
+//quick error check
+#define CL_CHK(err) if (CL_SUCCESS!=err) cout << "opencl error at " << __FILE__ << ": " <<__LINE__ << endl; 
+
 class OCL
 {
 public:
@@ -24,6 +27,10 @@ public:
   
   OCL();
   cl_program createProgram (string fname);
+  void buildProgram (cl_program prgrm);
+  cl_kernel createKernel (cl_program prgrm,string name);
+  //kernel,index,data
+  void setKernelArg (cl_kernel,int,size_t,void*);
   virtual ~OCL();
 
   //---helpers
@@ -83,19 +90,13 @@ OCL::OCL (){
   err = clGetDeviceIDs (this->platform,
 			CL_DEVICE_TYPE_GPU,
 			0,NULL,&num_devices); //Get number of gpus
-  
-  if (err!=CL_SUCCESS){
-    cout << "error getting device info\n";
-    exit (-1);
-  }
+  CL_CHK (err)
+    
   this->devices = (cl_device_id*) malloc (sizeof (cl_device_id)*num_devices);
   err = clGetDeviceIDs (this->platform,
 			CL_DEVICE_TYPE_GPU,
 			num_devices,devices,NULL);
-  if (err!=CL_SUCCESS){
-    cout << "fuck you..\n";
-    exit (-1);
-  }
+  CL_CHK (err)
 
   cout << "\n\n\nFound " << num_devices << " devices\n";
 
@@ -168,18 +169,30 @@ OCL::OCL (){
 					     this->devices [0], //This is just a test.. use gpu
 					     0,
 					     &err);
-  if (err!=CL_SUCCESS){
-    cout << "Cant create command queue\n";
-    exit (-1);
-  }
 
-    
+  CL_CHK (err)
+        
   //read source
   cl_program prgrm = createProgram("ocl.cl");
 
   //build program
+  buildProgram (prgrm);
   
-  err = clBuildProgram (prgrm,this->num_devices,this->devices,"",NULL,NULL);
+  //create kernel
+  cl_kernel kernel = createKernel(prgrm,"sum");
+
+  //set kernel args.
+  setKernelArg (kernel,0,sizeof (cl_mem),(void*)&bA);
+  setKernelArg (kernel,1,sizeof (cl_mem),(void*)&bB);
+  setKernelArg (kernel,2,sizeof (cl_mem),(void*)&bRes);
+  
+  clReleaseProgram (prgrm);
+  clReleaseCommandQueue (q);
+  //   END COMMAND QUEUE
+}
+
+void OCL::buildProgram (cl_program prgrm){
+  int err = clBuildProgram (prgrm,this->num_devices,this->devices,"",NULL,NULL);
   
   if (err!=CL_SUCCESS){
     cout << "Error building program. [";
@@ -206,11 +219,11 @@ OCL::OCL (){
     cout << emsg << "]\n";
     exit (-1);
   }
+}
+cl_kernel OCL:: createKernel (cl_program prgrm,string name){
   
-  //create kernel
-  
-  cl_kernel kernel = clCreateKernel(prgrm,"sum",&err);
-
+  int err;
+  cl_kernel kernel = clCreateKernel (prgrm,name.c_str (),&err);
   if (err!=CL_SUCCESS){
     cout << "Error creating kernel. [";
     string emsg;
@@ -229,20 +242,13 @@ OCL::OCL (){
     exit (-1);
   }
 
-  //set kernel args.
-
-  err = clSetKernelArg (kernel,
-			0,
-			sizeof (bA),
-			&bA);
-  err |= clSetKernelArg (kernel,
-			 1,
-			 sizeof (bB),
-			 &bB);
-  err |= clSetKernelArg (kernel,
-			 2,
-			 sizeof (bRes),
-			 &bRes);
+  return kernel;
+}
+void OCL::setKernelArg (cl_kernel kernel,int i,size_t size, void* data){
+  cl_int err = clSetKernelArg (kernel,
+			       i,
+			       size,
+			       data);
 
   if (err!=CL_SUCCESS){
     cout << "Error setting kernel arguments\n";
@@ -273,10 +279,8 @@ sizeof(cl_sampler)\
     exit (-1);
   }
   
-  clReleaseProgram (prgrm);
-  clReleaseCommandQueue (q);
-  //   END COMMAND QUEUE
 }
+
 
 cl_program OCL::createProgram (string fname){
   cl_int err;
