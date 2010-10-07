@@ -141,23 +141,23 @@ OCL::OCL (){
   float arrA [arrsize];
   float arrB [arrsize];
   float result [arrsize];
-  clCreateBuffer (this->context,
-		  CL_MEM_READ_ONLY,
-		  arrsize*(sizeof (float)),
-		  arrA,
-		  NULL);
+  cl_mem bA = clCreateBuffer (this->context,
+			      CL_MEM_READ_ONLY,
+			      arrsize*(sizeof (float)),
+			      arrA,
+			      NULL);
   
-  clCreateBuffer (this->context,
-		  CL_MEM_READ_ONLY,
-		  arrsize*(sizeof (float)),
-		  arrB,
-		  NULL);
+  cl_mem bB = clCreateBuffer (this->context,
+			      CL_MEM_READ_ONLY,
+			      arrsize*(sizeof (float)),
+			      arrB,
+			      NULL);
 
-  clCreateBuffer (this->context,
-		  CL_MEM_WRITE_ONLY,
-		  arrsize*(sizeof (float)),
-		  result,
-		  NULL);
+  cl_mem bRes =   clCreateBuffer (this->context,
+				  CL_MEM_WRITE_ONLY,
+				  arrsize*(sizeof (float)),
+				  result,
+				  NULL);
 
   
   
@@ -174,6 +174,9 @@ OCL::OCL (){
     
   //read source
   cl_program prgrm = createProgram("ocl.cl");
+
+  //build program
+  
   err = clBuildProgram (prgrm,this->num_devices,this->devices,"",NULL,NULL);
   
   if (err!=CL_SUCCESS){
@@ -203,7 +206,8 @@ OCL::OCL (){
   }
   
   //create kernel
-  clCreateKernel(prgrm,"sum",&err);
+  
+  cl_kernel kernel = clCreateKernel(prgrm,"sum",&err);
 
   if (err!=CL_SUCCESS){
     cout << "Error creating kernel. [";
@@ -222,10 +226,15 @@ OCL::OCL (){
     cout << emsg << "]"<< endl;
     exit (-1);
   }
+
+  //set kernel args.
+
+  clSetKernelArg (kernel,
+		  0,
+		  arrsize*sizeof (float),
+		  &bA);
   
   clReleaseProgram (prgrm);
-
-  
   clReleaseCommandQueue (q);
   //   END COMMAND QUEUE
 }
