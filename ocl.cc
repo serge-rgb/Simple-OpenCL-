@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
   
   // Create memory.-----------
 
-  const int arrsize = 1024;
+  const int arrsize = 128000;
   float arrA [arrsize];
   for (int i=0;i<arrsize;i++){
     arrA [i] = 1.0;
@@ -33,26 +33,11 @@ int main(int argc, char *argv[])
     result [i] = 0.0;
   }
   
-  cl_mem bA = clCreateBuffer (ocl.context,
-			      CL_MEM_READ_ONLY,
-			      sizeof (arrA),
-			      arrA,
-			      NULL);
-  
-  cl_mem bB = clCreateBuffer (ocl.context,
-			      CL_MEM_READ_ONLY,
-			      sizeof (arrB),
-			      arrB,
-			      NULL);
-
-  cl_mem bRes =   clCreateBuffer (ocl.context,
-				  CL_MEM_WRITE_ONLY,
-				  sizeof (result),
-				  result,
-				  NULL);
+  cl_mem bA = clCreateBuffer (ocl.context, CL_MEM_READ_ONLY, sizeof (arrA), arrA, NULL);
+  cl_mem bB = clCreateBuffer (ocl.context, CL_MEM_READ_ONLY, sizeof (arrB), arrB, NULL);
+  cl_mem bRes =   clCreateBuffer (ocl.context, CL_MEM_WRITE_ONLY, sizeof (result), result, NULL);
 
 
-  
   
   //   COMMAND QUEUE
   cl_command_queue q = clCreateCommandQueue (ocl.context,
@@ -64,16 +49,9 @@ int main(int argc, char *argv[])
 
   //write to the buffers.
   
-  err = clEnqueueWriteBuffer (q, bA, CL_TRUE, 0,
-			      sizeof (arrA),
-			      arrA,
-			      0,NULL,NULL);
+  err = clEnqueueWriteBuffer (q, bA, CL_TRUE, 0, sizeof (arrA), arrA, 0,NULL,NULL);
   CL_CHK (err);
-  err = clEnqueueWriteBuffer (q, bB, CL_TRUE, 0,
-			      sizeof (arrB),
-			      arrB,
-			      0,NULL,NULL);
-			      CL_CHK (err);
+  err = clEnqueueWriteBuffer (q, bB, CL_TRUE, 0, sizeof (arrB), arrB, 0,NULL,NULL); CL_CHK (err);
         
   //read source
   cl_program prgrm = ocl.createProgram("ocl.cl");
@@ -124,7 +102,7 @@ int main(int argc, char *argv[])
     }
     else fu++;
   }
-  if (fu==0) cout << "WIN: Summed two vectors of size 1024.\n";
+  if (fu==0) cout << "WIN: Summed two vectors of size " <<arrsize <<  ".\n";
   else cout << "FAIL: "<< ok << " " << fu << endl;
   
   clReleaseProgram (prgrm);
