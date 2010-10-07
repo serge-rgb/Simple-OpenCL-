@@ -16,16 +16,18 @@ void ocl_callback (const char* errinfo,
 
 class OCL
 {
-private:
+public:
   cl_platform_id platform;
   cl_uint        num_devices;
   cl_device_id   *devices;
   cl_context     context;
-  void _print_profile_info (cl_platform_id pf, string msg,cl_platform_info id);
-public:
+  
   OCL();
   cl_program createProgram (string fname);
   virtual ~OCL();
+
+  //---helpers
+  void _print_profile_info (cl_platform_id pf, string msg,cl_platform_info id);
 };
 
 
