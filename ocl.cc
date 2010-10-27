@@ -303,7 +303,7 @@ sizeof(cl_sampler)\
 
 cl_program OCL::createProgram (string fname){
   cl_int err;
-  ifstream file ("ocl.cl");
+  ifstream file (fname.c_str());
   stringstream ss;
   
   int num_lines = 0;
